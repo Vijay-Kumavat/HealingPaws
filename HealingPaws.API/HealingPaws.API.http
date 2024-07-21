@@ -1,0 +1,6 @@
+@HealingPaws.API_HostAddress = http://localhost:5034
+
+GET {{HealingPaws.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

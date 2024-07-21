@@ -1,0 +1,105 @@
+﻿@page "/schedule-appointment"
+@page "/schedule-appointment/{appointmentId:int?}"
+
+<div class="container d-flex justify-content-center align-items-center mt-4" style="height: 100vh;">
+    <div class="card p-4" style="max-width: 600px; width: 100%;">
+        <button type="button" class="btn btn-secondary btn-sm end-0 me-2 mt-2 position-absolute top-0" @onclick="GoBack">Back</button>
+        <h2 class="mb-4 text-center">Schedule Appointment</h2>
+        <EditForm Model="appointment" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+
+            <input type="hidden" @bind-value="appointment.AppointmentId" />
+            <input type="hidden" @bind-value="appointment.OwnerId" />
+
+            <div class="mb-3">
+                <label for="petName" class="form-label">Pet Name</label>
+                <InputText id="petName" class="form-control" @bind-Value="appointment.PetName" />
+                <ValidationMessage For="@(() => appointment.PetName)" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="ownerName" class="form-label">Owner Name</label>
+                <InputText id="ownerName" class="form-control" @bind-Value="appointment.OwnerName" />
+                <ValidationMessage For="@(() => appointment.OwnerName)" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="contactInformation" class="form-label">Contact Information</label>
+                <InputText id="contactInformation" class="form-control" @bind-Value="appointment.OwnerPhoneNumber" />
+                <ValidationMessage For="@(() => appointment.OwnerPhoneNumber)" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="date" class="form-label">Date and Time</label>
+                <input type="datetime-local" id="date" class="form-control" min="@DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm")" @bind-value="appointment.DateTime" />
+                <ValidationMessage For="@(() => appointment.DateTime)" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="reason" class="form-label">Reason</label>
+                <InputTextArea id="reason" class="form-control" @bind-Value="appointment.Reason" rows="3" />
+                <ValidationMessage For="@(() => appointment.Reason)" class="text-danger" />
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">Schedule</button>
+                <button type="reset" class="btn btn-secondary">Reset</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+
+    [Parameter] 
+    public int? appointmentId { get; set; }
+    private AppointmentRequest appointment = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (appointmentId.HasValue)
+        {
+            await LoadAppointmentData(appointmentId.Value);
+        }
+        else
+        {
+            appointment = new();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JSRuntime.InvokeVoidAsync("SetMinDate");
+    }
+
+    private async Task LoadAppointmentData(int id)
+    {
+        var response = await Http.GetAsync($"api/Appointments/{id}");
+        response.EnsureSuccessStatusCode();
+
+        var jsonResponse = await response.Content.ReadAsStringAsync();
+        Appointment data = JsonSerializer.Deserialize<Appointment>(jsonResponse, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+        if (data != null)
+        {
+            appointment.AppointmentId = data.AppointmentId;
+            appointment.DateTime = data.DateTime;
+            appointment.OwnerPhoneNumber = data.Owner.PhoneNumber;
+            appointment.OwnerName = data.Owner.Name;
+            appointment.OwnerId = data.OwnerId;
+            appointment.Reason = data.Reason;
+            appointment.Status = data.Status;
+            appointment.PetName = data.PetName;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await Http.PostAsJsonAsync("api/Appointments/PostAppointment", appointment);
+        Navigation.NavigateTo("/appointments");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/appointments");
+    }
+}
